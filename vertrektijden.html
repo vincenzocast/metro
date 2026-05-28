@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Vertrektijden</title>
+<style>
+  /* ============================================================
+     CONFIG is in the <script> block at the bottom of this file.
+     Edit STOP_CODES there (or use ?tpc=... in the URL).
+     ============================================================ */
+
+  :root{
+    --bg:        #07090f;
+    --panel:     #0d1320;
+    --ink:       #f4f6fb;
+    --ink-dim:   #7c879c;
+    --amber:     #ffb02e;
+    --green:     #34d17a;
+    --red:       #ff5a5f;
+    --line:      rgba(255,255,255,0.06);
+  }
+
+  *{ -webkit-box-sizing:border-box; box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{ height:100%; }
+
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(255,176,46,0.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(52,209,122,0.05), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+
+  .wrap{
+    height:100%;
+    display:-webkit-box; display:-webkit-flex; display:flex;
+    -webkit-box-orient:vertical; -webkit-flex-direction:column; flex-direction:column;
+    padding:3.2vmin 4vmin;
+  }
+
+  header{
+    display:-webkit-box; display:-webkit-flex; display:flex;
+    -webkit-box-align:end; -webkit-align-items:flex-end; align-items:flex-end;
+    -webkit-box-pack:justify; -webkit-justify-content:space-between; justify-content:space-between;
+    border-bottom:1px solid var(--line);
+    padding-bottom:2.2vmin;
+  }
+  .stopname{
+    font-size:4.4vmin; font-weight:700; letter-spacing:-0.01em;
+    line-height:1; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .stopname .sub{ display:block; font-size:2vmin; font-weight:500; color:var(--ink-dim); margin-top:0.9vmin; letter-spacing:0.04em; }
+  .clock{
+    font-variant-numeric:tabular-nums;
+    font-size:6vmin; font-weight:300; letter-spacing:0.01em; text-align:right; line-height:0.9;
+  }
+  .clock .date{ display:block; font-size:1.9vmin; color:var(--ink-dim); font-weight:500; margin-top:0.8vmin; }
+
+  .board{
+    -webkit-box-flex:1; -webkit-flex:1; flex:1;
+    margin-top:1.4vmin;
+    overflow:hidden;
+  }
+
+  .row{
+    display:-webkit-box; display:-webkit-flex; display:flex;
+    -webkit-box-align:center; -webkit-align-items:center; align-items:center;
+    padding:2.05vmin 0.5vmin;
+    border-bottom:1px solid var(--line);
+  }
+  .badge{
+    -webkit-flex:0 0 auto; flex:0 0 auto;
+    min-width:7.5vmin; height:7.5vmin; padding:0 1.4vmin;
+    border-radius:1.4vmin;
+    display:-webkit-box; display:-webkit-flex; display:flex;
+    -webkit-box-align:center; -webkit-align-items:center; align-items:center;
+    -webkit-box-pack:center; -webkit-justify-content:center; justify-content:center;
+    font-size:4.4vmin; font-weight:800; color:#07090f;
+    background:var(--amber);
+    margin-right:3vmin;
+  }
+  .dest{
+    -webkit-box-flex:1; -webkit-flex:1; flex:1;
+    min-width:0;
+    font-size:4.4vmin; font-weight:600; letter-spacing:-0.01em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .dest .via{ font-size:2vmin; color:var(--ink-dim); font-weight:500; }
+  .sched{
+    -webkit-flex:0 0 auto; flex:0 0 auto;
+    text-align:right; margin-right:3.4vmin; min-width:11vmin;
+  }
+  .sched .t{ font-size:3.4vmin; font-variant-numeric:tabular-nums; font-weight:500; }
+  .sched .delay{ display:block; font-size:1.9vmin; color:var(--red); font-weight:700; margin-top:0.4vmin; }
+  .sched .ontime{ display:block; font-size:1.9vmin; color:var(--green); font-weight:600; margin-top:0.4vmin; }
+  .mins{
+    -webkit-flex:0 0 auto; flex:0 0 auto;
+    text-align:right; min-width:13vmin;
+    font-variant-numeric:tabular-nums; font-weight:700; letter-spacing:-0.02em;
+  }
+  .mins .n{ font-size:6vmin; }
+  .mins .u{ font-size:2.6vmin; color:var(--ink-dim); margin-left:0.6vmin; }
+  .mins.now .n{ color:var(--green); }
+  .mins.soon .n{ color:var(--amber); }
+
+  footer{
+    display:-webkit-box; display:-webkit-flex; display:flex;
+    -webkit-box-align:center; -webkit-align-items:center; align-items:center;
+    -webkit-box-pack:justify; -webkit-justify-content:space-between; justify-content:space-between;
+    padding-top:1.8vmin; border-top:1px solid var(--line);
+    font-size:1.8vmin; color:var(--ink-dim);
+  }
+  .status{ display:-webkit-box; display:-webkit-flex; display:flex; -webkit-box-align:center; -webkit-align-items:center; align-items:center; }
+  .dot{ width:1.4vmin; height:1.4vmin; border-radius:50%; background:var(--green); margin-right:1vmin; }
+  .dot.stale{ background:var(--red); }
+
+  .msg{ color:var(--ink-dim); font-size:3vmin; text-align:center; margin-top:8vmin; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="stopname" id="stopname">Vertrektijden<span class="sub" id="stopsub">verbinden…</span></div>
+      <div class="clock"><span id="clock">--:--</span><span class="date" id="date"></span></div>
+    </header>
+    <div class="board" id="board">
+      <div class="msg">Bezig met laden…</div>
+    </div>
+    <footer>
+      <div class="status"><span class="dot" id="dot"></span><span id="statustext">verbinden…</span></div>
+      <div id="source">data: OVapi</div>
+    </footer>
+  </div>
+
+<script>
+/* ====================== CONFIG ====================== */
+var STOP_CODES    = "REPLACE_WITH_YOUR_TPC";  /* e.g. "30001234,30001235" */
+var MAX_ROWS      = 8;                          /* how many departures to show */
+var REFRESH_SECS  = 20;                          /* how often to reload data */
+/* You can also override the stop in the URL: ...vertrektijden.html?tpc=30001234,30001235 */
+/* =================================================== */
+
+(function(){
+  function qp(name){
+    var m = window.location.search.match(new RegExp("[?&]" + name + "=([^&]+)"));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  var codes = qp("tpc") || STOP_CODES;
+
+  var $board = document.getElementById("board");
+  var $dot = document.getElementById("dot");
+  var $statustext = document.getElementById("statustext");
+  var $stopname = document.getElementById("stopname");
+  var $stopsub = document.getElementById("stopsub");
+
+  var lastGood = null;
+
+  function pad(n){ return n < 10 ? "0" + n : "" + n; }
+
+  function tick(){
+    var d = new Date();
+    document.getElementById("clock").innerHTML = pad(d.getHours()) + ":" + pad(d.getMinutes());
+    var days = ["zo","ma","di","wo","do","vr","za"];
+    var months = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+    document.getElementById("date").innerHTML = days[d.getDay()] + " " + d.getDate() + " " + months[d.getMonth()];
+  }
+
+  function parseTime(s){
+    if(!s){ return null; }
+    var m = ("" + s).match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+    if(!m){ return null; }
+    return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10),
+                    parseInt(m[4],10), parseInt(m[5],10), parseInt(m[6],10));
+  }
+
+  /* Walk the OVapi JSON and collect every "pass" (a single departure). */
+  function collect(node, out){
+    if(node && typeof node === "object"){
+      if(node.TargetDepartureTime || node.ExpectedDepartureTime){
+        out.push(node);
+      } else {
+        for(var k in node){
+          if(node.hasOwnProperty(k)){ collect(node[k], out); }
+        }
+      }
+    }
+  }
+
+  function esc(s){
+    return ("" + (s == null ? "" : s))
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function render(data){
+    var passes = [];
+    collect(data, passes);
+
+    var now = new Date();
+    var rows = [];
+    var seen = {};
+    var stopLabel = null;
+
+    for(var i=0; i<passes.length; i++){
+      var p = passes[i];
+      if(!stopLabel && p.TimingPointName){ stopLabel = p.TimingPointName; }
+
+      var exp = parseTime(p.ExpectedDepartureTime) || parseTime(p.TargetDepartureTime);
+      var tgt = parseTime(p.TargetDepartureTime) || exp;
+      if(!exp){ continue; }
+
+      var status = p.TripStopStatus || "";
+      if(status === "PASSED" || status === "ARRIVED"){ continue; }
+
+      var mins = Math.round((exp - now) / 60000);
+      if(mins < -1){ continue; }
+
+      var key = (p.LinePublicNumber || "") + "|" + (p.DestinationName50 || "") + "|" +
+                pad(exp.getHours()) + pad(exp.getMinutes());
+      if(seen[key]){ continue; }
+      seen[key] = true;
+
+      var delayMin = tgt ? Math.round((exp - tgt) / 60000) : 0;
+
+      rows.push({
+        line: p.LinePublicNumber || p.LineName || "?",
+        dest: p.DestinationName50 || p.DestinationName || "",
+        exp: exp,
+        mins: mins,
+        delay: delayMin,
+        cancelled: (status === "CANCEL")
+      });
+    }
+
+    rows.sort(function(a,b){ return a.exp - b.exp; });
+    rows = rows.slice(0, MAX_ROWS);
+
+    if(stopLabel){
+      $stopname.firstChild.nodeValue = stopLabel;
+      $stopsub.innerHTML = "live vertrektijden";
+    }
+
+    if(rows.length === 0){
+      $board.innerHTML = '<div class="msg">Geen vertrektijden gevonden.<br>Controleer de haltecode.</div>';
+      return;
+    }
+
+    var html = "";
+    for(var r=0; r<rows.length; r++){
+      var row = rows[r];
+      var minHtml, minClass = "";
+      if(row.cancelled){
+        minHtml = '<span class="n" style="color:var(--red);font-size:3vmin;">vervallen</span>';
+      } else if(row.mins <= 0){
+        minClass = "now"; minHtml = '<span class="n">nu</span>';
+      } else {
+        if(row.mins <= 2){ minClass = "soon"; }
+        minHtml = '<span class="n">' + row.mins + '</span><span class="u">min</span>';
+      }
+
+      var delayHtml = "";
+      if(!row.cancelled && row.delay >= 1){
+        delayHtml = '<span class="delay">+' + row.delay + ' min</span>';
+      } else if(!row.cancelled && row.delay <= -1){
+        delayHtml = '<span class="ontime">' + row.delay + ' min</span>';
+      } else if(!row.cancelled){
+        delayHtml = '<span class="ontime">op tijd</span>';
+      }
+
+      html += '<div class="row">' +
+                '<div class="badge">' + esc(row.line) + '</div>' +
+                '<div class="dest">' + esc(row.dest) + '</div>' +
+                '<div class="sched"><span class="t">' + pad(row.exp.getHours()) + ":" + pad(row.exp.getMinutes()) + '</span>' + delayHtml + '</div>' +
+                '<div class="mins ' + minClass + '">' + minHtml + '</div>' +
+              '</div>';
+    }
+    $board.innerHTML = html;
+  }
+
+  function setStatus(ok){
+    var t = new Date();
+    if(ok){
+      $dot.className = "dot";
+      $statustext.innerHTML = "bijgewerkt " + pad(t.getHours()) + ":" + pad(t.getMinutes()) + ":" + pad(t.getSeconds());
+    } else {
+      $dot.className = "dot stale";
+      $statustext.innerHTML = "geen verbinding – laatste gegevens getoond";
+    }
+  }
+
+  function load(){
+    if(!codes || codes === "REPLACE_WITH_YOUR_TPC"){
+      $board.innerHTML = '<div class="msg">Stel eerst je haltecode in.<br>Open dit bestand en wijzig STOP_CODES,<br>of voeg ?tpc=JOUWCODE toe aan de URL.</div>';
+      return;
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "https://v0.ovapi.nl/tpc/" + codes, true);
+    xhr.timeout = 12000;
+    xhr.onreadystatechange = function(){
+      if(xhr.readyState === 4){
+        if(xhr.status >= 200 && xhr.status < 300){
+          try{
+            var data = JSON.parse(xhr.responseText);
+            lastGood = data;
+            render(data);
+            setStatus(true);
+          }catch(e){
+            if(lastGood){ render(lastGood); }
+            setStatus(false);
+          }
+        } else {
+          if(lastGood){ render(lastGood); }
+          setStatus(false);
+        }
+      }
+    };
+    xhr.onerror = xhr.ontimeout = function(){
+      if(lastGood){ render(lastGood); }
+      setStatus(false);
+    };
+    try{ xhr.send(); }catch(e){ setStatus(false); }
+  }
+
+  tick();
+  load();
+  setInterval(tick, 1000);
+  setInterval(load, REFRESH_SECS * 1000);
+})();
+</script>
+</body>
+</html>

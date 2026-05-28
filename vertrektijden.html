@@ -92,7 +92,7 @@ var REFRESH_SECS = 20;                    /* how often to reload data */
    request is routed through a public CORS proxy. If departures stop showing,
    the proxy is usually the culprit - swap the order or add another below. */
 var PROXIES = [
-  "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/?url=",  /* <-- paste your Cloudflare Worker URL here */
+  "https://ovapi-proxy.vincenzocastellano99.workers.dev/?url=",  /* <-- paste your Cloudflare Worker URL here */
   "https://api.allorigins.win/raw?url=",                   /* fallbacks if the Worker is ever unreachable */
   "https://corsproxy.io/?url="
 ];
